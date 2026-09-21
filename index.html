@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JAPAN TURF ONLINE - 架空競馬</title>
+<style>
+:root{
+  --bg:#eef2ef;--ink:#17201b;--muted:#6b746e;--line:#d6ddd8;
+  --green:#075c38;--green2:#0c7b4b;--gold:#c89a2b;--red:#c8333a;
+  --card:#fff;--nav:#103c2a;--soft:#f6f8f6;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Yu Gothic",Meiryo,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select{font:inherit}
+.topbar{background:#092b1e;color:#fff;padding:7px 0;font-size:12px}
+.wrap{max-width:1240px;margin:auto;padding:0 18px}
+.topbar .wrap{display:flex;justify-content:space-between;gap:16px}
+.brandrow{background:#fff;border-bottom:1px solid var(--line)}
+.brandrow .wrap{height:82px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{font-weight:900;font-size:29px;letter-spacing:.04em;color:#0d4f32}
+.logo small{display:block;font-size:10px;letter-spacing:.18em;color:#8a978f;margin-top:4px}
+.wallet{display:flex;gap:22px;align-items:center}
+.walletBox{text-align:right}
+.walletBox small{display:block;color:var(--muted);font-size:11px}
+.walletBox strong{font-size:24px;color:#a87813}
+nav{background:var(--nav);color:#fff}
+nav .wrap{display:flex}
+nav button{background:transparent;color:#fff;border:0;border-right:1px solid #ffffff20;padding:13px 18px;font-weight:700;cursor:pointer}
+nav button.active,nav button:hover{background:#0b6b42}
+main{padding:18px 0 30px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px}
+.panel{background:#fff;border:1px solid var(--line);box-shadow:0 2px 5px #0000000b}
+.raceHead{border-top:5px solid var(--green);padding:16px 18px 12px}
+.raceTitleRow{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}
+.raceNo{background:var(--green);color:#fff;font-weight:900;padding:8px 10px;border-radius:3px;font-size:20px}
+.raceName h1{margin:0;font-size:24px}
+.raceName .meta{color:#59645e;font-size:13px;margin-top:7px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.badge{font-size:11px;border:1px solid #cbd5ce;background:#f6f8f6;padding:3px 7px;border-radius:2px}
+.countdown{font-size:12px;color:#7b837f;text-align:right}
+.countdown strong{display:block;color:var(--red);font-size:19px;margin-top:3px}
+.tabs{display:flex;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fafbfa}
+.tabs button{border:0;border-right:1px solid var(--line);background:transparent;padding:11px 14px;cursor:pointer;font-weight:700}
+.tabs button.active{color:var(--green);background:#fff;border-bottom:3px solid var(--green)}
+.tableWrap{overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f3f6f4;color:#47534c;border-bottom:1px solid var(--line);padding:8px 6px;white-space:nowrap}
+td{border-bottom:1px solid #e4e9e5;padding:7px 6px;vertical-align:middle}
+tr.horseRow{cursor:pointer}
+tr.horseRow:hover{background:#f8fbf9}
+tr.horseRow.selected{background:#eaf7ef;outline:2px solid #2d9c61;outline-offset:-2px}
+.frameNo{width:28px;height:28px;display:grid;place-items:center;font-weight:900;border:1px solid #777}
+.horseName{font-weight:900;font-size:13px;color:#0b4e31}
+.jockey{color:#38634e}
+.small{font-size:10px;color:#77817a}
+.odds{font-size:16px;font-weight:900;color:#b37d10}
+.pop{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#edf1ee;font-weight:900}
+.form{font-family:monospace;letter-spacing:.08em}
+.sidebar .panel{margin-bottom:14px}
+.panelTitle{background:#173d2d;color:#fff;padding:10px 12px;font-weight:900;font-size:14px}
+.betbox{padding:13px}
+.betType{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px}
+.betType button{padding:8px 3px;border:1px solid #bbc8c0;background:#fff;cursor:pointer;font-size:11px;font-weight:800}
+.betType button.active{background:var(--green);color:#fff;border-color:var(--green)}
+.ticket{background:#faf7ed;border:1px solid #dfd4b3;padding:10px;min-height:83px;font-size:12px}
+.ticket strong{color:#73570e}
+.amountRow{display:flex;gap:7px;margin-top:9px}
+.amountRow input{width:100%;padding:10px;border:1px solid #b9c3bd}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:6px}
+.quick button{border:1px solid #c9d1cc;background:#fff;padding:7px 3px;cursor:pointer;font-size:11px}
+.betBtn,.raceBtn{width:100%;border:0;padding:12px;font-weight:900;cursor:pointer;margin-top:9px}
+.betBtn{background:#c59527;color:#fff}
+.raceBtn{background:var(--green);color:#fff}
+.raceBtn:disabled{opacity:.45;cursor:not-allowed}
+.balanceInfo{display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px;padding:8px 0;border-top:1px dashed #d2d7d3;margin-top:9px}
+.resultArea{padding:15px}
+.course{position:relative;background:#4b9b55;border:9px solid #fff;outline:1px solid #cbd5ce;height:390px;overflow:hidden}
+.turf{position:absolute;inset:0;background:
+repeating-linear-gradient(90deg,#4a9954 0 70px,#45924f 70px 140px)}
+.rail{position:absolute;left:0;right:0;bottom:26px;border-top:4px solid white;border-bottom:2px solid #ddd;height:9px}
+.finish{position:absolute;right:6%;top:0;bottom:0;width:10px;background:repeating-linear-gradient(0deg,#fff 0 10px,#222 10px 20px)}
+.runner{position:absolute;left:1%;display:flex;align-items:center;gap:4px;transition:transform .12s linear;z-index:3}
+.runner .silk{width:19px;height:19px;border:1px solid #333;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:900}
+.runner .emoji{font-size:25px;filter:drop-shadow(0 2px 2px #0005)}
+.commentary{margin-top:10px;background:#101a14;color:#eaf5ee;padding:11px 13px;min-height:70px;font-size:13px;line-height:1.7}
+.payoutTable{margin-top:12px}
+.historyItem{padding:9px 10px;border-bottom:1px solid #e2e7e3;font-size:12px}
+.win{color:#137545;font-weight:900}.lose{color:#b0363e;font-weight:900}
+.notice{font-size:11px;color:#718078;line-height:1.6;padding:10px 2px;text-align:center}
+.statbar{height:5px;background:#e5ebe7;margin-top:4px}
+.statbar i{display:block;height:100%;background:#2a8757}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.sidebar{order:-1}.brandrow .wrap{height:auto;padding-top:15px;padding-bottom:15px;align-items:flex-start}.wallet{gap:10px}.walletBox strong{font-size:18px}.course{height:350px}}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><span>架空競馬ポータル / SIMULATION ONLY</span><span>20歳未満向け賭博ではなく、換金不可のゲーム内ポイントです</span></div></div>
+<div class="brandrow"><div class="wrap">
+  <div class="logo">JAPAN TURF ONLINE<small>VIRTUAL RACING INFORMATION</small></div>
+  <div class="wallet">
+    <div class="walletBox"><small>本日の収支</small><strong id="dailyPnl">±0 C</strong></div>
+    <div class="walletBox"><small>所持コイン</small><strong id="coins">30,000 C</strong></div>
+  </div>
+</div></div>
+<nav><div class="wrap">
+<button class="active">レース</button><button>出馬表</button><button>オッズ</button><button>結果</button><button>データ</button>
+</div></nav>
+
+<main><div class="wrap"><div class="grid">
+<section>
+  <div class="panel">
+    <div class="raceHead">
+      <div class="raceTitleRow">
+        <div style="display:flex;gap:12px">
+          <div class="raceNo" id="raceNo">11R</div>
+          <div class="raceName">
+            <h1 id="raceName">第18回 東京ネオンステークス（GⅠ）</h1>
+            <div class="meta" id="raceMeta">東京  芝 1600m（左） / 3歳以上 オープン / 定量</div>
+            <div class="badges"><span class="badge">天候：晴</span><span class="badge">芝：良</span><span class="badge">発走 15:40</span><span class="badge" id="fieldCount">12頭</span></div>
+          </div>
+        </div>
+        <div class="countdown">締切まで<strong id="countdown">03:00</strong></div>
+      </div>
+    </div>
+    <div class="tabs"><button class="active">出馬表</button><button>オッズ</button><button>調教</button><button>過去成績</button></div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr>
+          <th>枠</th><th>馬名 / 性齢</th><th>騎手</th><th>斤量</th><th>馬体重</th><th>脚質</th><th>近5走</th><th>能力</th><th>人気</th><th>単勝</th>
+        </tr></thead>
+        <tbody id="horseTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <div class="panelTitle">レースライブ</div>
+    <div class="resultArea">
+      <div class="course" id="course"><div class="turf"></div><div class="finish"></div><div class="rail"></div></div>
+      <div class="commentary" id="commentary">出走馬がパドックから本馬場へ向かっています。馬券を購入してレースを開始してください。</div>
+      <div class="payoutTable" id="resultBox"></div>
+    </div>
+  </div>
+</section>
+
+<aside class="sidebar">
+  <div class="panel">
+    <div class="panelTitle">投票</div>
+    <div class="betbox">
+      <div class="betType">
+        <button class="active">単勝</button><button disabled>複勝</button><button disabled>馬連</button>
+      </div>
+      <div class="ticket" id="ticket">出馬表から1頭選択してください。</div>
+      <div class="amountRow"><input id="betAmount" type="number" min="100" step="100" value="1000"></div>
+      <div class="quick">
+        <button data-add="100">+100</button><button data-add="500">+500</button><button data-add="1000">+1000</button><button data-max="1">MAX</button>
+      </div>
+      <button class="betBtn" id="betBtn">この内容で投票</button>
+      <button class="raceBtn" id="raceBtn" disabled>発走する</button>
+      <div class="balanceInfo"><span>購入額</span><b id="stake">0 C</b><span>的中時払戻見込</span><b id="potential">0 C</b></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panelTitle">購入済み馬券</div>
+    <div id="bets"><div class="historyItem">購入済みの馬券はありません。</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panelTitle">直近の結果</div>
+    <div id="history"><div class="historyItem">まだレース履歴がありません。</div></div>
+  </div>
+</aside>
+</div>
+<div class="notice">※ このサイトは架空競馬ゲームです。実際の金銭、入出金、換金、賞品交換はありません。結果はゲーム内ロジックで生成されます。</div>
+</div></main>
+
+<script>
+const NAMES=["オメガグリフォン","ノーブルヴェロシティ","サクラテンペスト","ミッドナイトレイン",
+"グランエクリプス","トーキョーグローリー","ヴァーミリオンスター","ブルーアステル",
+"キングスレガリア","ホワイトブレイズ","エターナルリーフ","ライジングフォース"];
+const JOCKEYS=["横山レイ","武藤アキラ","川田シュン","ルメールJ","坂井リク","戸崎タク","松山ユウ","岩田レン","田辺ソウ","菅原ハル","西村ジュン","三浦カイ"];
+const STYLES=["逃げ","先行","先行","差し","差し","追込"];
+const COLORS=["#fff","#222","#e33","#3756d8","#f4d321","#42a852","#f69b2c","#f58dc5"];
+const TRACKS=["東京","中山","阪神","京都"];
+const RACE_NAMES=["東京ネオンステークス（GⅠ）","エメラルドマイル（GⅡ）","オータムクラウン（GⅠ）","ジャパンターフ記念（GⅠ）"];
+let coins=Number(localStorage.getItem("jto_coins")||30000);
+let history=JSON.parse(localStorage.getItem("jto_history")||"[]");
+let dailyPnl=Number(localStorage.getItem("jto_pnl")||0);
+let horses=[],selected=null,bets=[],racing=false,timer=180,tick;
+
+function fmt(n){return Math.floor(n).toLocaleString("ja-JP")}
+function save(){localStorage.setItem("jto_coins",coins);localStorage.setItem("jto_history",JSON.stringify(history.slice(0,25)));localStorage.setItem("jto_pnl",dailyPnl)}
+function silkColor(frame){return COLORS[(frame-1)%COLORS.length]}
+function createRace(){
+  selected=null;bets=[];racing=false;timer=180;
+  clearInterval(tick);
+  const raceName=RACE_NAMES[Math.floor(Math.random()*RACE_NAMES.length)];
+  const track=TRACKS[Math.floor(Math.random()*TRACKS.length)];
+  document.getElementById("raceName").textContent="第"+(10+Math.floor(Math.random()*18))+"回 "+raceName;
+  document.getElementById("raceMeta").textContent=`${track}  芝 1600m（左） / 3歳以上 オープン / 定量`;
+  horses=NAMES.map((name,i)=>{
+    const ability=68+Math.floor(Math.random()*28);
+    const condition=["◎","○","○","▲","△"][Math.floor(Math.random()*5)];
+    const weight=430+Math.floor(Math.random()*80);
+    const change=Math.floor(Math.random()*17)-8;
+    const style=STYLES[Math.floor(Math.random()*STYLES.length)];
+    const raw=(108-ability)/7 + Math.random()*2.4;
+    const odds=Math.max(1.5,Math.round(raw*10)/10);
+    const runs=Array.from({length:5},()=>1+Math.floor(Math.random()*12)).join("-");
+    return {id:i+1,name,jockey:JOCKEYS[i],ability,condition,weight,change,style,odds,runs,sex:i%3===0?"牝4":"牡4",pop:0};
+  });
+  [...horses].sort((a,b)=>a.odds-b.odds).forEach((h,i)=>h.pop=i+1);
+  render();
+  tick=setInterval(()=>{if(timer>0&&!racing){timer--;renderCountdown()}},1000);
+}
+function renderCountdown(){
+  const m=String(Math.floor(timer/60)).padStart(2,"0"),s=String(timer%60).padStart(2,"0");
+  document.getElementById("countdown").textContent=`${m}:${s}`;
+}
+function render(){
+  document.getElementById("coins").textContent=fmt(coins)+" C";
+  document.getElementById("dailyPnl").textContent=(dailyPnl>=0?"+":"")+fmt(dailyPnl)+" C";
+  document.getElementById("dailyPnl").style.color=dailyPnl>=0?"#167348":"#bd3b42";
+  renderCountdown();
+  const tb=document.getElementById("horseTable");tb.innerHTML="";
+  horses.forEach(h=>{
+    const tr=document.createElement("tr");tr.className="horseRow"+(selected===h.id?" selected":"");
+    const frame=Math.ceil(h.id/2), col=silkColor(frame);
+    tr.innerHTML=`<td><div class="frameNo" style="background:${col};${frame==2?'color:#fff':''}">${frame}</div><div class="small">${h.id}番</div></td>
+    <td><div class="horseName">${h.name}</div><div class="small">${h.sex}　父 Virtual King</div></td>
+    <td><div class="jockey">${h.jockey}</div><div class="small">${h.condition} 気配</div></td>
+    <td>57.0kg</td><td>${h.weight}kg <span class="${h.change>=0?'win':'lose'}">${h.change>=0?'+':''}${h.change}</span></td>
+    <td>${h.style}</td><td class="form">${h.runs}</td>
+    <td><b>${h.ability}</b><div class="statbar"><i style="width:${h.ability}%"></i></div></td>
+    <td><span class="pop">${h.pop}</span></td><td><span class="odds">${h.odds.toFixed(1)}</span><div class="small">倍</div></td>`;
+    tr.onclick=()=>{if(!racing){selected=h.id;render()}};
+    tb.appendChild(tr);
+  });
+  const t=document.getElementById("ticket");
+  if(!selected)t.textContent="出馬表から1頭選択してください。";
+  else{
+    const h=horses.find(x=>x.id===selected);
+    t.innerHTML=`<strong>単勝 ${h.id}番</strong><br>${h.name}<br><span class="small">現在オッズ ${h.odds.toFixed(1)}倍 / ${h.pop}番人気</span>`;
+  }
+  const betsBox=document.getElementById("bets");
+  betsBox.innerHTML=bets.length?"":"<div class='historyItem'>購入済みの馬券はありません。</div>";
+  bets.forEach(b=>{
+    const h=horses.find(x=>x.id===b.horseId);
+    betsBox.innerHTML+=`<div class="historyItem"><b>単勝 ${h.id}番 ${h.name}</b><br>${fmt(b.amount)} C × ${h.odds.toFixed(1)}倍</div>`;
+  });
+  const stake=bets.reduce((a,b)=>a+b.amount,0);
+  let potential=0;bets.forEach(b=>{const h=horses.find(x=>x.id===b.horseId);potential+=Math.floor(b.amount*h.odds)});
+  document.getElementById("stake").textContent=fmt(stake)+" C";
+  document.getElementById("potential").textContent=fmt(potential)+" C";
+  document.getElementById("raceBtn").disabled=bets.length===0||racing;
+  const hist=document.getElementById("history");hist.innerHTML=history.length?"":"<div class='historyItem'>まだレース履歴がありません。</div>";
+  history.slice(0,7).forEach(x=>hist.innerHTML+=`<div class="historyItem">${x.label}<br><span class="${x.delta>=0?'win':'lose'}">${x.delta>=0?'+':''}${fmt(x.delta)} C</span></div>`);
+  renderCourse();
+}
+function renderCourse(){
+  const c=document.getElementById("course");
+  c.querySelectorAll(".runner").forEach(x=>x.remove());
+  horses.forEach((h,i)=>{
+    const r=document.createElement("div");r.className="runner";r.id="runner-"+h.id;
+    r.style.top=(9+i*29)+"px";
+    r.innerHTML=`<span class="silk" style="background:${silkColor(Math.ceil(h.id/2))}">${h.id}</span><span class="emoji">🏇</span>`;
+    c.appendChild(r);
+  });
+}
+document.getElementById("betBtn").onclick=()=>{
+  if(racing)return;
+  if(!selected){alert("出馬表から馬を選んでください");return}
+  const amt=Math.floor(Number(document.getElementById("betAmount").value));
+  if(!Number.isFinite(amt)||amt<100){alert("100 C以上で入力してください");return}
+  if(amt>coins){alert("所持コインが足りません");return}
+  coins-=amt;dailyPnl-=amt;bets.push({horseId:selected,amount:amt});save();render();
+}
+document.querySelectorAll(".quick button").forEach(b=>b.onclick=()=>{
+  const i=document.getElementById("betAmount");
+  if(b.dataset.max)i.value=coins; else i.value=Number(i.value||0)+Number(b.dataset.add||0);
+});
+document.getElementById("raceBtn").onclick=async()=>{
+  if(racing||!bets.length)return;racing=true;clearInterval(tick);render();
+  const comm=document.getElementById("commentary");
+  comm.textContent="各馬ゲートイン完了。スタートしました！";
+  const scores=horses.map(h=>{
+    const styleBonus=h.style==="逃げ"?Math.random()*4:h.style==="追込"?Math.random()*7:Math.random()*5;
+    return {id:h.id,score:h.ability+Math.random()*26+styleBonus};
+  }).sort((a,b)=>b.score-a.score);
+  const rank={};scores.forEach((s,i)=>rank[s.id]=i);
+  const start=performance.now(),dur=7000;
+  let phase=-1;
+  await new Promise(resolve=>{
+    function step(now){
+      const t=Math.min(1,(now-start)/dur);
+      const p=Math.floor(t*5);
+      if(p!==phase){phase=p;
+        const calls=[
+          "スタート！ 先行争いは激しく、各馬が位置を取りにいきます。",
+          "向正面。ペースはやや速め。中団は密集しています。",
+          "3コーナーから4コーナー。外から差し馬が進出開始！",
+          "最後の直線！ 先頭が粘る、後方から一気に追い込んでくる！",
+          "残り200m！ 横一線、ゴール前は大接戦です！"
+        ];comm.textContent=calls[Math.min(p,4)];
+      }
+      horses.forEach(h=>{
+        const idx=rank[h.id];
+        const pace=0.83+h.ability/420;
+        const wob=Math.sin(t*18+h.id)*0.02*(1-t);
+        const finishAdj=(1-idx*0.012);
+        const prog=Math.min(finishAdj,t*pace+wob);
+        const el=document.getElementById("runner-"+h.id);
+        if(el)el.style.transform=`translateX(${prog*Math.max(250,document.getElementById("course").clientWidth-110)}px)`;
+      });
+      if(t<1)requestAnimationFrame(step);else resolve();
+    }requestAnimationFrame(step);
+  });
+  const top3=scores.slice(0,3).map(s=>horses.find(h=>h.id===s.id));
+  const winner=top3[0];
+  let payout=0;bets.forEach(b=>{if(b.horseId===winner.id)payout+=Math.floor(b.amount*winner.odds)});
+  coins+=payout;dailyPnl+=payout;
+  const stake=bets.reduce((a,b)=>a+b.amount,0),delta=payout-stake;
+  history.unshift({label:`1着 ${winner.id}番 ${winner.name} / ${winner.odds.toFixed(1)}倍`,delta});
+  save();
+  comm.innerHTML=`ゴール！ <b>${winner.id}番 ${winner.name}</b> が1着！ 2着 ${top3[1].id}番 ${top3[1].name}、3着 ${top3[2].id}番 ${top3[2].name}。`;
+  document.getElementById("resultBox").innerHTML=`
+    <table><thead><tr><th>着順</th><th>馬番</th><th>馬名</th><th>人気</th><th>単勝</th></tr></thead>
+    <tbody>${top3.map((h,i)=>`<tr><td><b>${i+1}着</b></td><td>${h.id}</td><td>${h.name}</td><td>${h.pop}人気</td><td>${h.odds.toFixed(1)}倍</td></tr>`).join("")}</tbody></table>
+    <div style="padding:10px 0;font-size:13px"><b>あなたの払戻：</b> <span class="${payout>0?'win':'lose'}">${fmt(payout)} C</span>　収支：<span class="${delta>=0?'win':'lose'}">${delta>=0?'+':''}${fmt(delta)} C</span></div>
+    <button onclick="createRace()" style="padding:10px 16px;border:0;background:#075c38;color:#fff;font-weight:900;cursor:pointer">次のレースへ</button>`;
+  racing=false;render();
+}
+createRace();
+</script>
+</body>
+</html>
