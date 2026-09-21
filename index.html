@@ -13,6 +13,9 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,"Yu Gothic",Meiryo,sans-serif;background:var(--bg);color:var(--ink)}
 button,input,select{font:inherit}
+button{touch-action:manipulation;min-height:40px}
+nav button,.tabs button,.betType button,.quick button{position:relative;z-index:2;user-select:none;-webkit-tap-highlight-color:transparent}
+nav button:active,.tabs button:active,.betType button:active,.quick button:active{transform:translateY(1px);filter:brightness(.94)}
 .topbar{background:#092b1e;color:#fff;padding:7px 0;font-size:12px}
 .wrap{max-width:1240px;margin:auto;padding:0 18px}
 .topbar .wrap{display:flex;justify-content:space-between;gap:16px}
@@ -63,6 +66,9 @@ tr.horseRow.selected{background:#eaf7ef;outline:2px solid #2d9c61;outline-offset
 .betType{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px}
 .betType button{padding:8px 3px;border:1px solid #bbc8c0;background:#fff;cursor:pointer;font-size:11px;font-weight:800}
 .betType button.active{background:var(--green);color:#fff;border-color:var(--green)}
+.betType button.dev{opacity:.72}
+.uiToast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#10251a;color:#fff;padding:10px 16px;border-radius:8px;box-shadow:0 8px 30px #0005;z-index:999;display:none;font-size:13px}
+.uiToast.show{display:block}
 .ticket{background:#faf7ed;border:1px solid #dfd4b3;padding:10px;min-height:83px;font-size:12px}
 .ticket strong{color:#73570e}
 .amountRow{display:flex;gap:7px;margin-top:9px}
@@ -148,7 +154,7 @@ repeating-linear-gradient(90deg,#4a9954 0 70px,#45924f 70px 140px)}
     <div class="panelTitle">投票</div>
     <div class="betbox">
       <div class="betType">
-        <button class="active">単勝</button><button disabled>複勝</button><button disabled>馬連</button>
+        <button class="active" data-bettype="単勝">単勝</button><button class="dev" data-bettype="複勝">複勝</button><button class="dev" data-bettype="馬連">馬連</button>
       </div>
       <div class="ticket" id="ticket">出馬表から1頭選択してください。</div>
       <div class="amountRow"><input id="betAmount" type="number" min="100" step="100" value="1000"></div>
@@ -175,6 +181,7 @@ repeating-linear-gradient(90deg,#4a9954 0 70px,#45924f 70px 140px)}
 <div class="notice">※ このサイトは架空競馬ゲームです。実際の金銭、入出金、換金、賞品交換はありません。結果はゲーム内ロジックで生成されます。</div>
 </div></main>
 
+<div class="uiToast" id="uiToast"></div>
 <script>
 const NAMES=["オメガグリフォン","ノーブルヴェロシティ","サクラテンペスト","ミッドナイトレイン",
 "グランエクリプス","トーキョーグローリー","ヴァーミリオンスター","ブルーアステル",
@@ -188,6 +195,7 @@ let coins=Number(localStorage.getItem("jto_coins")||30000);
 let history=JSON.parse(localStorage.getItem("jto_history")||"[]");
 let dailyPnl=Number(localStorage.getItem("jto_pnl")||0);
 let horses=[],selected=null,bets=[],racing=false,timer=180,tick;
+let tableMode="entries";
 
 function fmt(n){return Math.floor(n).toLocaleString("ja-JP")}
 function save(){localStorage.setItem("jto_coins",coins);localStorage.setItem("jto_history",JSON.stringify(history.slice(0,25)));localStorage.setItem("jto_pnl",dailyPnl)}
@@ -224,7 +232,11 @@ function render(){
   document.getElementById("dailyPnl").style.color=dailyPnl>=0?"#167348":"#bd3b42";
   renderCountdown();
   const tb=document.getElementById("horseTable");tb.innerHTML="";
-  horses.forEach(h=>{
+  let display=[...horses];
+  if(tableMode==="odds") display.sort((a,b)=>a.odds-b.odds);
+  if(tableMode==="training") display.sort((a,b)=>b.ability-a.ability);
+  if(tableMode==="past") display.sort((a,b)=>{ const av=x=>x.runs.split("-").reduce((sum,n)=>sum+Number(n),0)/5; return av(a)-av(b); });
+  display.forEach(h=>{
     const tr=document.createElement("tr");tr.className="horseRow"+(selected===h.id?" selected":"");
     const frame=Math.ceil(h.id/2), col=silkColor(frame);
     tr.innerHTML=`<td><div class="frameNo" style="background:${col};${frame==2?'color:#fff':''}">${frame}</div><div class="small">${h.id}番</div></td>
@@ -331,6 +343,35 @@ document.getElementById("raceBtn").onclick=async()=>{
     <button onclick="createRace()" style="padding:10px 16px;border:0;background:#075c38;color:#fff;font-weight:900;cursor:pointer">次のレースへ</button>`;
   racing=false;render();
 }
+function showToast(msg){
+  const el=document.getElementById("uiToast");
+  el.textContent=msg;el.classList.add("show");
+  clearTimeout(showToast._t);showToast._t=setTimeout(()=>el.classList.remove("show"),1800);
+}
+function setActiveButtons(group,clicked){group.forEach(b=>b.classList.toggle("active",b===clicked));}
+const innerTabs=[...document.querySelectorAll(".tabs button")];
+innerTabs.forEach((btn,idx)=>btn.addEventListener("click",()=>{
+  setActiveButtons(innerTabs,btn);
+  tableMode=["entries","odds","training","past"][idx];
+  render();
+  showToast(["出馬表を表示","単勝オッズ順に並び替え","能力・気配順に並び替え","近5走の平均着順で並び替え"][idx]);
+}));
+const navBtns=[...document.querySelectorAll("nav button")];
+navBtns.forEach((btn,idx)=>btn.addEventListener("click",()=>{
+  setActiveButtons(navBtns,btn);
+  if(idx===0){document.querySelector(".resultArea").scrollIntoView({behavior:"smooth",block:"start"});showToast("レースライブへ移動");}
+  if(idx===1){tableMode="entries";setActiveButtons(innerTabs,innerTabs[0]);render();document.querySelector(".tableWrap").scrollIntoView({behavior:"smooth",block:"start"});showToast("出馬表を表示");}
+  if(idx===2){tableMode="odds";setActiveButtons(innerTabs,innerTabs[1]);render();document.querySelector(".tableWrap").scrollIntoView({behavior:"smooth",block:"start"});showToast("オッズ順に表示");}
+  if(idx===3){document.getElementById("history").scrollIntoView({behavior:"smooth",block:"center"});showToast("直近の結果へ移動");}
+  if(idx===4){tableMode="training";setActiveButtons(innerTabs,innerTabs[2]);render();document.querySelector(".tableWrap").scrollIntoView({behavior:"smooth",block:"start"});showToast("能力データを表示");}
+}));
+const betTypeBtns=[...document.querySelectorAll(".betType button")];
+betTypeBtns.forEach(btn=>btn.addEventListener("click",()=>{
+  const type=btn.dataset.bettype;
+  if(type!=="単勝"){showToast(type+"は準備中。現在は単勝で遊べます");return;}
+  setActiveButtons(betTypeBtns,btn);
+}));
+
 createRace();
 </script>
 </body>
