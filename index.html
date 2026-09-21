@@ -195,13 +195,14 @@ let coins=Number(localStorage.getItem("jto_coins")||30000);
 let history=JSON.parse(localStorage.getItem("jto_history")||"[]");
 let dailyPnl=Number(localStorage.getItem("jto_pnl")||0);
 let horses=[],selected=null,bets=[],racing=false,timer=180,tick;
+let tableMode="entries", betType="単勝", selectedHorses=[];
 let tableMode="entries";
 
 function fmt(n){return Math.floor(n).toLocaleString("ja-JP")}
 function save(){localStorage.setItem("jto_coins",coins);localStorage.setItem("jto_history",JSON.stringify(history.slice(0,25)));localStorage.setItem("jto_pnl",dailyPnl)}
 function silkColor(frame){return COLORS[(frame-1)%COLORS.length]}
 function createRace(){
-  selected=null;bets=[];racing=false;timer=180;
+  selected=null;selectedHorses=[];bets=[];racing=false;timer=180;
   clearInterval(tick);
   const raceName=RACE_NAMES[Math.floor(Math.random()*RACE_NAMES.length)];
   const track=TRACKS[Math.floor(Math.random()*TRACKS.length)];
@@ -237,7 +238,9 @@ function render(){
   if(tableMode==="training") display.sort((a,b)=>b.ability-a.ability);
   if(tableMode==="past") display.sort((a,b)=>{ const av=x=>x.runs.split("-").reduce((sum,n)=>sum+Number(n),0)/5; return av(a)-av(b); });
   display.forEach(h=>{
-    const tr=document.createElement("tr");tr.className="horseRow"+(selected===h.id?" selected":"");
+    const tr=document.createElement("tr");
+    const isSel=betType==="馬連"?selectedHorses.includes(h.id):selected===h.id;
+    tr.className="horseRow"+(isSel?" selected":"");
     const frame=Math.ceil(h.id/2), col=silkColor(frame);
     tr.innerHTML=`<td><div class="frameNo" style="background:${col};${frame==2?'color:#fff':''}">${frame}</div><div class="small">${h.id}番</div></td>
     <td><div class="horseName">${h.name}</div><div class="small">${h.sex}　父 Virtual King</div></td>
@@ -246,23 +249,20 @@ function render(){
     <td>${h.style}</td><td class="form">${h.runs}</td>
     <td><b>${h.ability}</b><div class="statbar"><i style="width:${h.ability}%"></i></div></td>
     <td><span class="pop">${h.pop}</span></td><td><span class="odds">${h.odds.toFixed(1)}</span><div class="small">倍</div></td>`;
-    tr.onclick=()=>{if(!racing){selected=h.id;render()}};
+    tr.onclick=()=>{if(racing)return;if(betType==="馬連"){if(selectedHorses.includes(h.id))selectedHorses=selectedHorses.filter(x=>x!==h.id);else if(selectedHorses.length<2)selectedHorses.push(h.id);else selectedHorses=[selectedHorses[1],h.id];}else{selected=h.id;selectedHorses=[h.id];}render()};
     tb.appendChild(tr);
   });
   const t=document.getElementById("ticket");
-  if(!selected)t.textContent="出馬表から1頭選択してください。";
-  else{
-    const h=horses.find(x=>x.id===selected);
-    t.innerHTML=`<strong>単勝 ${h.id}番</strong><br>${h.name}<br><span class="small">現在オッズ ${h.odds.toFixed(1)}倍 / ${h.pop}番人気</span>`;
-  }
+  if(betType==="馬連"){
+    if(selectedHorses.length<2)t.innerHTML=`<strong>馬連</strong><br>あと${2-selectedHorses.length}頭選択してください。`;
+    else{const a=horses.find(x=>x.id===selectedHorses[0]),b=horses.find(x=>x.id===selectedHorses[1]);const o=Math.max(2.2,Math.round(a.odds*b.odds*.85*10)/10);t.innerHTML=`<strong>馬連 ${a.id}-${b.id}</strong><br>${a.name} × ${b.name}<br><span class="small">想定オッズ ${o.toFixed(1)}倍</span>`;}
+  }else if(!selected)t.textContent="出馬表から1頭選択してください。";
+  else{const h=horses.find(x=>x.id===selected);const o=betType==="複勝"?Math.max(1.1,Math.round((1+h.odds/4)*10)/10):h.odds;t.innerHTML=`<strong>${betType} ${h.id}番</strong><br>${h.name}<br><span class="small">現在オッズ ${o.toFixed(1)}倍 / ${h.pop}番人気</span>`;}
   const betsBox=document.getElementById("bets");
   betsBox.innerHTML=bets.length?"":"<div class='historyItem'>購入済みの馬券はありません。</div>";
-  bets.forEach(b=>{
-    const h=horses.find(x=>x.id===b.horseId);
-    betsBox.innerHTML+=`<div class="historyItem"><b>単勝 ${h.id}番 ${h.name}</b><br>${fmt(b.amount)} C × ${h.odds.toFixed(1)}倍</div>`;
-  });
+  bets.forEach(b=>{if(b.type==="馬連"){const a=horses.find(x=>x.id===b.horseIds[0]),c=horses.find(x=>x.id===b.horseIds[1]);betsBox.innerHTML+=`<div class="historyItem"><b>馬連 ${a.id}-${c.id}</b><br>${a.name} × ${c.name}<br>${fmt(b.amount)} C × ${b.odds.toFixed(1)}倍</div>`;}else{const h=horses.find(x=>x.id===b.horseId);betsBox.innerHTML+=`<div class="historyItem"><b>${b.type} ${h.id}番 ${h.name}</b><br>${fmt(b.amount)} C × ${b.odds.toFixed(1)}倍</div>`;}});
   const stake=bets.reduce((a,b)=>a+b.amount,0);
-  let potential=0;bets.forEach(b=>{const h=horses.find(x=>x.id===b.horseId);potential+=Math.floor(b.amount*h.odds)});
+  let potential=bets.reduce((sum,b)=>sum+Math.floor(b.amount*b.odds),0);
   document.getElementById("stake").textContent=fmt(stake)+" C";
   document.getElementById("potential").textContent=fmt(potential)+" C";
   document.getElementById("raceBtn").disabled=bets.length===0||racing;
@@ -282,11 +282,15 @@ function renderCourse(){
 }
 document.getElementById("betBtn").onclick=()=>{
   if(racing)return;
-  if(!selected){alert("出馬表から馬を選んでください");return}
+  if(betType==="馬連"&&selectedHorses.length!==2){alert("馬連は2頭選んでください");return}
+  if(betType!=="馬連"&&!selected){alert("出馬表から馬を選んでください");return}
   const amt=Math.floor(Number(document.getElementById("betAmount").value));
   if(!Number.isFinite(amt)||amt<100){alert("100 C以上で入力してください");return}
   if(amt>coins){alert("所持コインが足りません");return}
-  coins-=amt;dailyPnl-=amt;bets.push({horseId:selected,amount:amt});save();render();
+  let ticket;
+  if(betType==="馬連"){const x=horses.find(h=>h.id===selectedHorses[0]),y=horses.find(h=>h.id===selectedHorses[1]);const odds=Math.max(2.2,Math.round(x.odds*y.odds*.85*10)/10);ticket={type:"馬連",horseIds:[x.id,y.id],amount:amt,odds};}
+  else{const h=horses.find(x=>x.id===selected);const odds=betType==="複勝"?Math.max(1.1,Math.round((1+h.odds/4)*10)/10):h.odds;ticket={type:betType,horseId:h.id,amount:amt,odds};}
+  coins-=amt;dailyPnl-=amt;bets.push(ticket);save();render();showToast(betType+"を購入しました");
 }
 document.querySelectorAll(".quick button").forEach(b=>b.onclick=()=>{
   const i=document.getElementById("betAmount");
@@ -330,7 +334,7 @@ document.getElementById("raceBtn").onclick=async()=>{
   });
   const top3=scores.slice(0,3).map(s=>horses.find(h=>h.id===s.id));
   const winner=top3[0];
-  let payout=0;bets.forEach(b=>{if(b.horseId===winner.id)payout+=Math.floor(b.amount*winner.odds)});
+  let payout=0;const top3ids=top3.map(h=>h.id),top2=new Set(top3ids.slice(0,2));bets.forEach(b=>{let hit=b.type==="単勝"?b.horseId===winner.id:b.type==="複勝"?top3ids.includes(b.horseId):top2.has(b.horseIds[0])&&top2.has(b.horseIds[1]);if(hit)payout+=Math.floor(b.amount*b.odds)});
   coins+=payout;dailyPnl+=payout;
   const stake=bets.reduce((a,b)=>a+b.amount,0),delta=payout-stake;
   history.unshift({label:`1着 ${winner.id}番 ${winner.name} / ${winner.odds.toFixed(1)}倍`,delta});
