@@ -1,4 +1,4 @@
-name: Fix UI buttons
+name: Enable all betting buttons
 
 on:
   push:
@@ -16,26 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Patch index.html
+      - name: Replace index with functional betting UI
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('index.html')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace('button,input,select{font:inherit}', 'button,input,select{font:inherit}\nbutton{touch-action:manipulation;min-height:40px}\nnav button,.tabs button,.betType button,.quick button{position:relative;z-index:2;user-select:none;-webkit-tap-highlight-color:transparent}\nnav button:active,.tabs button:active,.betType button:active,.quick button:active{transform:translateY(1px);filter:brightness(.94)}')
-          s = s.replace('.betType button.active{background:var(--green);color:#fff;border-color:var(--green)}', '.betType button.active{background:var(--green);color:#fff;border-color:var(--green)}\n.betType button.dev{opacity:.72}\n.uiToast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#10251a;color:#fff;padding:10px 16px;border-radius:8px;box-shadow:0 8px 30px #0005;z-index:999;display:none;font-size:13px}\n.uiToast.show{display:block}')
-          s = s.replace('<button class="active">単勝</button><button disabled>複勝</button><button disabled>馬連</button>', '<button class="active" data-bettype="単勝">単勝</button><button class="dev" data-bettype="複勝">複勝</button><button class="dev" data-bettype="馬連">馬連</button>')
-          s = s.replace('\n<script>\n', '\n<div class="uiToast" id="uiToast"></div>\n<script>\n', 1)
-          s = s.replace('let horses=[],selected=null,bets=[],racing=false,timer=180,tick;', 'let horses=[],selected=null,bets=[],racing=false,timer=180,tick;\nlet tableMode="entries";')
-          s = s.replace('  const tb=document.getElementById("horseTable");tb.innerHTML="";\n  horses.forEach(h=>{', '  const tb=document.getElementById("horseTable");tb.innerHTML="";\n  let display=[...horses];\n  if(tableMode==="odds") display.sort((a,b)=>a.odds-b.odds);\n  if(tableMode==="training") display.sort((a,b)=>b.ability-a.ability);\n  if(tableMode==="past") display.sort((a,b)=>{ const av=x=>x.runs.split("-").reduce((sum,n)=>sum+Number(n),0)/5; return av(a)-av(b); });\n  display.forEach(h=>{', 1)
-          hook = '''\nfunction showToast(msg){\n  const el=document.getElementById("uiToast");\n  el.textContent=msg;el.classList.add("show");\n  clearTimeout(showToast._t);showToast._t=setTimeout(()=>el.classList.remove("show"),1800);\n}\nfunction setActiveButtons(group,clicked){group.forEach(b=>b.classList.toggle("active",b===clicked));}\nconst innerTabs=[...document.querySelectorAll(".tabs button")];\ninnerTabs.forEach((btn,idx)=>btn.addEventListener("click",()=>{\n  setActiveButtons(innerTabs,btn);\n  tableMode=["entries","odds","training","past"][idx];\n  render();\n  showToast(["出馬表を表示","単勝オッズ順に並び替え","能力・気配順に並び替え","近5走の平均着順で並び替え"][idx]);\n}));\nconst navBtns=[...document.querySelectorAll("nav button")];\nnavBtns.forEach((btn,idx)=>btn.addEventListener("click",()=>{\n  setActiveButtons(navBtns,btn);\n  if(idx===0){document.querySelector(".resultArea").scrollIntoView({behavior:"smooth",block:"start"});showToast("レースライブへ移動");}\n  if(idx===1){tableMode="entries";setActiveButtons(innerTabs,innerTabs[0]);render();document.querySelector(".tableWrap").scrollIntoView({behavior:"smooth",block:"start"});showToast("出馬表を表示");}\n  if(idx===2){tableMode="odds";setActiveButtons(innerTabs,innerTabs[1]);render();document.querySelector(".tableWrap").scrollIntoView({behavior:"smooth",block:"start"});showToast("オッズ順に表示");}\n  if(idx===3){document.getElementById("history").scrollIntoView({behavior:"smooth",block:"center"});showToast("直近の結果へ移動");}\n  if(idx===4){tableMode="training";setActiveButtons(innerTabs,innerTabs[2]);render();document.querySelector(".tableWrap").scrollIntoView({behavior:"smooth",block:"start"});showToast("能力データを表示");}\n}));\nconst betTypeBtns=[...document.querySelectorAll(".betType button")];\nbetTypeBtns.forEach(btn=>btn.addEventListener("click",()=>{\n  const type=btn.dataset.bettype;\n  if(type!=="単勝"){showToast(type+"は準備中。現在は単勝で遊べます");return;}\n  setActiveButtons(betTypeBtns,btn);\n}));\n'''
-          s = s.replace('\ncreateRace();\n</script>', hook + '\ncreateRace();\n</script>')
-          p.write_text(s, encoding='utf-8')
-          PY
-      - name: Commit fix
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git commit -m "Fix navigation and small buttons" || exit 0
-          git push
+          cat > /tmp/site.gz.b64 <<'EOF'
+H4sICLSrsWoAA2phcGFuX3R1cmZfY2xpY2tmaXguaHRtbACsW3uT01ay/38+hVazbNnBNpJlj19j3zuh2CxZGFJA7t0URW1k63gskCVfSR6Y9U4VY4fwChCSAAECgYT3I5BANmQCoep+lAh7Zv7KV9jucyRZ8mMgqU1VxtLROd19+vHr7iMx/QfFqNgLDcLV7LpWmpjGH06T9bkiv0/mcYDICvzUiS1zlZpsWsQu8k27Gs/y3rAu10mRn1fJgYZh2jxXMXSb6DDtgKrYtaJC5tUKidObmKqrtiprcasia6QoIg1btTVSenvmnZlZbve7O//M7ZjdtnV2Cxfnelf+tXJneeXev9Zu3p/exOZNTFv2Av7mTcOwWxMcF4+X5/KThFSTpFqIx1V9f35SzCQFsQx39aZNlPzkVDmTmiJwr6k6yU8qU4qiZAt08ZxJiJ6fFDLpipQtuPdJGKhkyikkMWdoQKGSzclJvDUJvZMkSWYEKrIJI9UqMtfleWAuSJWkDHeWUbXhyVQ1W50qTCxOvNEqGwfjlvoPVZ/Llw1TIWYcRhYnyoay0KrL5pyq54VCFfQXr8p1VVvIz5igrRj/XpN7y7BraoWPbSequWDELFm34hYx1WqhLFf2z5lGU1fy87IZQX1ECxVDM0z3HlQSBSZN2zZ0sECjaccsopGK3UJWeVWvAR3bm9GyjWalFpcrtmro+bqsq42mJuNNoa7q8RpR52p2PiU0QHDYL+fSTdhy2fJvysTejW7l3f9fU63sd+9aDcNSKXGTIOF5UvgHyKiQg/lkoQl7ijPp8rqhg80OkPJ+1Y7bciNeA9Yaso+z7dkmaKEhm+BtQVnyKPs8CYnkj4Ul84eDArqDLUq+aph1xghkJe9FxMbBaKGqajYx82UThdGJZUUSuRToOGEbjbJstgImmRRyybJIXINQP2nIioIukGkc5Fxzg1OQvJhEnSYOmHIDvOEgCxkYRV0XXPeQm7bhExA4MUuXMLYcW6qoVkOTF/JVjRws7GtatlpdiLtBmQd1QTCCEg6Amxfm5EZ...TRUNCATED_FOR_DISPLAY...
