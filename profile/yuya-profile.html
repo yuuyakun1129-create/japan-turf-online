@@ -44,6 +44,20 @@
     .copy { border: 1px solid #68d99330; border-radius: 8px; background: #20944c; padding: 12px 14px; min-height: 44px; font-size: 14px; transition: background .2s; }
     .copy:hover { background: #28aa59; }
     .note { margin: 17px 4px 0; color: #898989; font-family: system-ui, sans-serif; font-size: 12px; text-align: center; line-height: 1.8; }
+    .music { margin-top: 20px; padding: 17px; }
+    .music-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .music-heading h2 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: .14em; }
+    .music-heading a { color: #aaa; font-size: 12px; text-underline-offset: 4px; }
+    .track-title { font-size: 16px; line-height: 1.5; font-weight: 500; margin: 0 0 4px; }
+    .track-source { font-size: 12px; color: #999; margin: 0 0 14px; }
+    .video-frame { width: 100%; min-height: 200px; aspect-ratio: 16 / 9; background: #050505; border-radius: 10px; overflow: hidden; }
+    .video-frame iframe { display: block; width: 100%; height: 100%; min-height: 200px; border: 0; }
+    .music-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .music-controls button { min-height: 44px; border: 1px solid #ffffff30; border-radius: 9px; padding: 9px 12px; background: #ffffff08; font-size: 14px; }
+    .music-controls button:disabled { opacity: .4; cursor: default; }
+    .volume-control { display: flex; align-items: center; flex: 1 1 150px; gap: 10px; font-size: 12px; color: #aaa; }
+    .volume-control input { min-width: 70px; width: 100%; height: 44px; accent-color: #b487e0; }
+    .music-status { margin: 11px 0 0; color: #aaa; font: 13px/1.7 system-ui, sans-serif; }
     .gate { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; background: #000; transition: opacity .65s, visibility .65s; }
     .gate.dismissed { opacity: 0; visibility: hidden; pointer-events: none; }
     .enter { width: 100%; height: 100%; border: 0; background: transparent; font-size: clamp(26px, 6vw, 33px); letter-spacing: -.04em; line-height: 1.45; }
@@ -99,6 +113,20 @@
         <button class="copy" data-copy type="button" hidden>コピー</button>
       </section>
       <p class="note">フレンド追加で「rq.nn」を検索</p>
+      <section class="music glass" aria-labelledby="music-title">
+        <div class="music-heading"><h2 id="music-title">MY MUSIC</h2><a href="https://www.youtube.com/watch?v=WzWAQv-USfo" target="_blank" rel="noopener noreferrer">YouTubeで開く ↗</a></div>
+        <p class="track-title">Yvng Patra — Tier 1</p>
+        <p class="track-source">Live at POP YOURS 2023</p>
+        <div class="video-frame" id="video-frame"></div>
+        <div class="music-controls" id="music-controls" hidden>
+          <button id="music-play" type="button" disabled>再生</button>
+          <button id="music-mute" type="button" aria-pressed="false" disabled>ミュート</button>
+          <label class="volume-control" for="music-volume">音量<input id="music-volume" type="range" min="0" max="100" value="40" disabled></label>
+        </div>
+        <p class="music-status" id="music-status" role="status">入口をタップすると曲を読み込みます。</p>
+        <p class="music-status">音量が変わらない場合は端末の音量ボタンで調整してください。</p>
+        <noscript><p class="music-status">上のリンクからYouTubeで再生できます。</p></noscript>
+      </section>
     </div>
   </main>
   <dialog id="contact-dialog" aria-labelledby="dialog-title">
@@ -142,6 +170,102 @@
           typingTimer = setTimeout(type, 260);
         }
         restart();
+        startMusic();
+      });
+      let musicPlayer = null;
+      let musicReady = false;
+      let musicStarted = false;
+      let musicFailed = false;
+      let musicTimer;
+      const musicStatus = (message) => { $('music-status').textContent = message; };
+      function syncMute() {
+        const muted = musicPlayer.isMuted();
+        $('music-mute').setAttribute('aria-pressed', String(muted));
+        $('music-mute').textContent = muted ? '音を出す' : 'ミュート';
+      }
+      function startMusic() {
+        if (musicStarted) return;
+        musicStarted = true;
+        $('music-controls').hidden = false;
+        musicStatus('曲を読み込んでいます…');
+        const video = document.createElement('iframe');
+        video.id = 'youtube-player';
+        video.title = 'ゆうやの選んだ音楽 — YouTube';
+        video.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+        video.allowFullscreen = true;
+        video.referrerPolicy = 'strict-origin-when-cross-origin';
+        const params = new URLSearchParams({ enablejsapi: '1', autoplay: '0', playsinline: '1', controls: '1', loop: '1', playlist: 'WzWAQv-USfo', rel: '0' });
+        if (/^https?:$/.test(location.protocol)) params.set('origin', location.origin);
+        video.src = 'https://www.youtube.com/embed/WzWAQv-USfo?' + params;
+        $('video-frame').appendChild(video);
+        musicTimer = setTimeout(() => {
+          if (!musicReady && !musicFailed) musicStatus('動画内の再生ボタンを押してください。開けない場合はYouTubeで再生できます。');
+        }, 12000);
+        window.onYouTubeIframeAPIReady = () => {
+          musicPlayer = new YT.Player('youtube-player', {
+            events: {
+              onReady(event) {
+                if (musicFailed) return;
+                clearTimeout(musicTimer);
+                musicReady = true;
+                document.querySelectorAll('#music-controls button, #music-controls input').forEach(control => control.disabled = false);
+                event.target.setVolume(Number($('music-volume').value));
+                syncMute();
+                musicStatus('音が出ないときは再生ボタンをタップしてください。');
+                event.target.playVideo();
+              },
+              onStateChange(event) {
+                if (musicFailed) return;
+                const playing = event.data === 1;
+                $('music-play').textContent = playing || event.data === 3 ? '一時停止' : '再生';
+                if (playing) { musicStatus('再生中'); syncMute(); }
+                else if (event.data === 2) musicStatus('一時停止中');
+                else if (event.data === 3) musicStatus('読み込み中…');
+                else if (event.data === 0) musicStatus('再生が終了しました。');
+              },
+              onAutoplayBlocked() {
+                if (!musicFailed) musicStatus('再生ボタンをタップすると音楽が流れます。');
+              },
+              onError(event) {
+                clearTimeout(musicTimer);
+                musicFailed = true;
+                musicReady = false;
+                document.querySelectorAll('#music-controls button, #music-controls input').forEach(control => control.disabled = true);
+                const denied = event.data === 101 || event.data === 150;
+                musicStatus(denied ? 'この曲はサイト内で再生できません。「YouTubeで開く」から聴けます。' : '曲を読み込めませんでした。「YouTubeで開く」から再生してください。');
+              }
+            }
+          });
+        };
+        if (window.YT && window.YT.Player) window.onYouTubeIframeAPIReady();
+        else {
+          const api = document.createElement('script');
+          api.src = 'https://www.youtube.com/iframe_api';
+          api.async = true;
+          api.onerror = () => {
+            clearTimeout(musicTimer);
+            musicStatus('動画内の再生ボタンを押してください。開けない場合はYouTubeで再生できます。');
+          };
+          document.head.appendChild(api);
+        }
+      }
+      $('music-play').addEventListener('click', () => {
+        if (!musicReady) return;
+        const state = musicPlayer.getPlayerState();
+        if (state === 1 || state === 3) musicPlayer.pauseVideo();
+        else musicPlayer.playVideo();
+      });
+      $('music-mute').addEventListener('click', () => {
+        if (!musicReady) return;
+        if (musicPlayer.isMuted()) musicPlayer.unMute();
+        else musicPlayer.mute();
+        syncMute();
+      });
+      $('music-volume').addEventListener('input', event => {
+        if (!musicReady) return;
+        musicPlayer.setVolume(Number(event.target.value));
+        if (Number(event.target.value) > 0 && musicPlayer.isMuted()) musicPlayer.unMute();
+        syncMute();
       });
       const dialog = $('contact-dialog');
       $('discord').addEventListener('click', () => dialog.showModal());
