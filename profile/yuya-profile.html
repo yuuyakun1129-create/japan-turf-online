@@ -58,6 +58,7 @@
     .volume-control { display: flex; align-items: center; flex: 1 1 150px; gap: 10px; font-size: 12px; color: #aaa; }
     .volume-control input { min-width: 70px; width: 100%; height: 44px; accent-color: #b487e0; }
     .music-status { margin: 11px 0 0; color: #aaa; font: 13px/1.7 system-ui, sans-serif; }
+    .quick-music { position: fixed; top: max(17px, env(safe-area-inset-top)); left: max(17px, env(safe-area-inset-left)); z-index: 3; min-height: 44px; max-width: calc(100% - 90px); border: 1px solid #a86be166; border-radius: 22px; background: #18121fee; padding: 10px 16px; font-size: 14px; box-shadow: 0 4px 20px #0006; }
     .gate { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; background: #000; transition: opacity .65s, visibility .65s; }
     .gate.dismissed { opacity: 0; visibility: hidden; pointer-events: none; }
     .enter { width: 100%; height: 100%; border: 0; background: transparent; font-size: clamp(26px, 6vw, 33px); letter-spacing: -.04em; line-height: 1.45; }
@@ -91,6 +92,7 @@
   <button id="motion" class="motion" type="button" aria-label="背景アニメーションを停止" aria-pressed="false" hidden>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
   </button>
+  <button id="quick-music" class="quick-music" type="button" hidden>♫ 音楽を再生</button>
   <main class="stage" id="main">
     <div class="stack">
       <article class="profile glass" aria-label="ゆうやのプロフィール">
@@ -123,7 +125,7 @@
           <button id="music-mute" type="button" aria-pressed="false" disabled>ミュート</button>
           <label class="volume-control" for="music-volume">音量<input id="music-volume" type="range" min="0" max="100" value="40" disabled></label>
         </div>
-        <p class="music-status" id="music-status" role="status">入口をタップすると曲を読み込みます。</p>
+        <p class="music-status" id="music-status" role="status">音楽を準備しています…</p>
         <p class="music-status">音量が変わらない場合は端末の音量ボタンで調整してください。</p>
         <noscript><p class="music-status">上のリンクからYouTubeで再生できます。</p></noscript>
       </section>
@@ -170,14 +172,35 @@
           typingTimer = setTimeout(type, 260);
         }
         restart();
-        startMusic();
+        $('quick-music').hidden = false;
+        requestMusicPlayback();
       });
       let musicPlayer = null;
       let musicReady = false;
       let musicStarted = false;
       let musicFailed = false;
       let musicTimer;
+      let playbackTimer;
       const musicStatus = (message) => { $('music-status').textContent = message; };
+      const showPlayPrompt = () => {
+        $('quick-music').textContent = '♫ タップして音楽を再生';
+        musicStatus('上の「音楽を再生」か、動画内の再生ボタンをタップしてください。');
+      };
+      function requestMusicPlayback() {
+        if (musicFailed || !musicReady) {
+          $('video-frame').scrollIntoView({ behavior: 'auto', block: 'center' });
+          if (!musicFailed) musicStatus('読み込み中です。動画内の再生ボタンが出たらタップしてください。');
+          return;
+        }
+        musicPlayer.unMute();
+        musicPlayer.playVideo();
+        syncMute();
+        clearTimeout(playbackTimer);
+        playbackTimer = setTimeout(() => {
+          if (musicFailed || !musicReady) return;
+          if (musicPlayer.getPlayerState() !== 1) showPlayPrompt();
+        }, 3500);
+      }
       function syncMute() {
         const muted = musicPlayer.isMuted();
         $('music-mute').setAttribute('aria-pressed', String(muted));
@@ -211,28 +234,32 @@
                 document.querySelectorAll('#music-controls button, #music-controls input').forEach(control => control.disabled = false);
                 event.target.setVolume(Number($('music-volume').value));
                 syncMute();
-                musicStatus('音が出ないときは再生ボタンをタップしてください。');
-                event.target.playVideo();
+                musicStatus('準備できました。入口をタップすると再生します。');
+                if (entered) requestMusicPlayback();
               },
               onStateChange(event) {
                 if (musicFailed) return;
                 const playing = event.data === 1;
                 $('music-play').textContent = playing || event.data === 3 ? '一時停止' : '再生';
-                if (playing) { musicStatus('再生中'); syncMute(); }
-                else if (event.data === 2) musicStatus('一時停止中');
+                $('quick-music').textContent = playing || event.data === 3 ? '♫ 一時停止' : '♫ 音楽を再生';
+                if (playing) { clearTimeout(playbackTimer); musicStatus('再生中'); syncMute(); }
+                else if (event.data === 2) { clearTimeout(playbackTimer); musicStatus('一時停止中'); }
                 else if (event.data === 3) musicStatus('読み込み中…');
                 else if (event.data === 0) musicStatus('再生が終了しました。');
               },
               onAutoplayBlocked() {
-                if (!musicFailed) musicStatus('再生ボタンをタップすると音楽が流れます。');
+                if (!musicFailed) showPlayPrompt();
               },
               onError(event) {
                 clearTimeout(musicTimer);
+                clearTimeout(playbackTimer);
                 musicFailed = true;
                 musicReady = false;
                 document.querySelectorAll('#music-controls button, #music-controls input').forEach(control => control.disabled = true);
                 const denied = event.data === 101 || event.data === 150;
-                musicStatus(denied ? 'この曲はサイト内で再生できません。「YouTubeで開く」から聴けます。' : '曲を読み込めませんでした。「YouTubeで開く」から再生してください。');
+                $('quick-music').textContent = '♫ 再生エラーを確認';
+                musicStatus(denied ? 'この曲はサイト内で再生できません。「YouTubeで開く」から聴けます。' : `再生エラー ${event.data}。Safariでこのページを開き直すか、「YouTubeで開く」から再生してください。`);
+                console.warn('[profile music] YouTube playback error:', event.data);
               }
             }
           });
@@ -249,12 +276,14 @@
           document.head.appendChild(api);
         }
       }
-      $('music-play').addEventListener('click', () => {
-        if (!musicReady) return;
+      function toggleMusic() {
+        if (!musicReady) { requestMusicPlayback(); return; }
         const state = musicPlayer.getPlayerState();
-        if (state === 1 || state === 3) musicPlayer.pauseVideo();
-        else musicPlayer.playVideo();
-      });
+        if (state === 1 || state === 3) { clearTimeout(playbackTimer); musicPlayer.pauseVideo(); }
+        else requestMusicPlayback();
+      }
+      $('music-play').addEventListener('click', toggleMusic);
+      $('quick-music').addEventListener('click', toggleMusic);
       $('music-mute').addEventListener('click', () => {
         if (!musicReady) return;
         if (musicPlayer.isMuted()) musicPlayer.unMute();
@@ -341,6 +370,7 @@
       addEventListener('resize', resize);
       document.addEventListener('visibilitychange', restart);
       resize(); updateMotion();
+      startMusic();
     })();
   </script>
 </body>
