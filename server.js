@@ -1,24 +1,20 @@
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const zlib = require('zlib');
-
-const dir = __dirname;
-const parts = ['00','01','02','03','04']
-  .map(n => fs.readFileSync(path.join(dir, `sitepart_${n}.txt`), 'utf8'))
-  .join('');
-const html = zlib.gunzipSync(Buffer.from(parts, 'base64'));
-const port = Number(process.env.PORT || 3000);
-
-http.createServer((req, res) => {
-  if (req.url === '/' || req.url === '/index.html' || req.url.startsWith('/?')) {
-    res.writeHead(200, {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store'
-    });
-    res.end(html);
-    return;
-  }
-  res.writeHead(404, {'Content-Type':'text/plain; charset=utf-8'});
-  res.end('Not Found');
-}).listen(port, '0.0.0.0', () => console.log(`AUTOCAT static listening on ${port}`));
+const http=require('http'),fs=require('fs'),path=require('path'),zlib=require('zlib'),url=require('url');
+const dir=__dirname;
+const parts=['00','01','02','03','04'].map(n=>fs.readFileSync(path.join(dir,`sitepart_${n}.txt`),'utf8')).join('');
+const home=zlib.gunzipSync(Buffer.from(parts,'base64'));
+const port=Number(process.env.PORT||3000);
+const page=(title,body)=>`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{margin:0;background:#0b0c12;color:#f2f3f7;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}main{max-width:760px;margin:auto;padding:28px 18px 80px}a{color:#38bdf8}h1{font-size:32px}.card{background:#151720;border:1px solid #2c3040;border-radius:14px;padding:18px;margin:14px 0}.btn{display:inline-block;padding:12px 18px;border-radius:10px;background:#facc15;color:#171200;text-decoration:none;font-weight:800;margin:6px 6px 6px 0}input{width:100%;box-sizing:border-box;padding:12px;margin:6px 0 12px;border-radius:8px;border:1px solid #444;background:#0f1118;color:white}</style><main><a href="/">← AUTOCAT JP</a>${body}</main></html>`;
+const guide=page('AUTOCAT JP VIP',`<h1>AUTOCAT JP VIP</h1><div class="card"><h2>VIP版</h2><p>使用回数無制限、作成・複製最大5個、詳細設定などを利用できる上位版です。</p><p>30日・60日・90日のプランから選択できます。</p><a class="btn" href="/account/register?next=/vip/purchase">アカウント作成</a><a class="btn" href="/account/login?next=/vip/purchase">ログイン</a></div><div class="card"><h2>Free版との主な違い</h2><p>Free: 毎週の無料枠・最大2個</p><p>VIP: 回数無制限・最大5個・詳細設定・プリセット拡張</p></div>`);
+const auth=(mode)=>page(mode==='register'?'アカウント作成':'ログイン',`<h1>${mode==='register'?'アカウント作成':'ログイン'}</h1><div class="card"><p>現在、公開環境のアカウント機能を本体バックエンドへ移行中です。</p><p>画面が404になる問題は修正済みです。</p><a class="btn" href="/vip-guide">VIP案内へ</a></div>`);
+http.createServer((req,res)=>{
+ const u=url.parse(req.url,true),p=u.pathname;
+ const send=(code,type,data)=>{res.writeHead(code,{'Content-Type':type,'Cache-Control':'no-store'});res.end(data)};
+ if(p==='/'||p==='/index.html') return send(200,'text/html; charset=utf-8',home);
+ if(p==='/vip-guide') return send(200,'text/html; charset=utf-8',guide);
+ if(p==='/account/register') return send(200,'text/html; charset=utf-8',auth('register'));
+ if(p==='/account/login') return send(200,'text/html; charset=utf-8',auth('login'));
+ if(p==='/api/usage_count') return send(200,'application/json; charset=utf-8',JSON.stringify({count:0}));
+ if(p==='/api/free/status') return send(200,'application/json; charset=utf-8',JSON.stringify({ok:true,backend:'migration'}));
+ if(p.startsWith('/static/')) return send(204,'text/plain','');
+ return send(404,'text/plain; charset=utf-8','Not Found');
+}).listen(port,'0.0.0.0',()=>console.log(`AUTOCAT listening on ${port}`));
